@@ -192,10 +192,16 @@ public class SquadManager implements SquadIntegration, Listener {
               List<MatchPlayer> players =
                   s.getPlayers().stream()
                       .map(uuid -> event.getMatch().getPlayer(uuid))
+                      .filter(Objects::nonNull)
                       .collect(Collectors.toList());
-
+              if (players.isEmpty()) return;
               MatchPlayer leader = event.getMatch().getPlayer(s.getLeader());
-              JoinRequest request = JoinRequest.of(leader, null, JoinRequest.Flag.SQUAD);
+              if (leader == null) leader = players.get(0);
+              JoinRequest request =
+                  JoinRequest.group(
+                      null,
+                      players.size(),
+                      JoinRequest.playerFlags(leader, JoinRequest.Flag.SQUAD));
               JoinResult result = jmm.queryJoin(leader, request);
               players.forEach(p -> jmm.join(p, request, result));
             });
