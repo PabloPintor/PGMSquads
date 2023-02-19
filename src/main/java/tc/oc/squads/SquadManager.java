@@ -150,7 +150,7 @@ public class SquadManager implements SquadIntegration, Listener {
 
     UUID invitedUuid = invited.getId();
 
-    if (!squad.addInvite(invited.getId())) throw exception("command.squad.alreadyInvited");
+    if (!squad.addInvite(invited.getId())) throw exception("command.squad.alreadyJoinedOrInvited");
     executor.schedule(() -> squad.expireInvite(invitedUuid), 30, TimeUnit.SECONDS);
   }
 
