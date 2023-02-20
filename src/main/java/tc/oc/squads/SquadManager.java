@@ -100,7 +100,7 @@ public class SquadManager implements SquadIntegration, Listener {
 
   /** Squad command handlers * */
   public Squad createSquad(MatchPlayer leader) {
-    if (getSquadByPlayer(leader) != null) throw exception("command.squad.alreadyInSquad");
+    if (getSquadByPlayer(leader) != null) throw exception("command.squad.alreadyHasSquad");
 
     Squad newSquad = new Squad(leader.getId());
     squads.add(newSquad);
@@ -111,7 +111,7 @@ public class SquadManager implements SquadIntegration, Listener {
 
   public void leaveSquad(MatchPlayer player) {
     Squad squad = getSquadByPlayer(player);
-    if (squad == null) throw exception("command.squad.notInSquad");
+    if (squad == null) throw exception("command.squad.notInSquad.you");
     if (squad.getLeader().equals(player.getId()))
       throw exception("command.squad.leaderCannotLeave");
     leaveSquad(player, player.getId(), squad);
@@ -125,9 +125,9 @@ public class SquadManager implements SquadIntegration, Listener {
 
   public void kickPlayer(@Nullable MatchPlayer player, UUID uuid, MatchPlayer leader) {
     Squad squad = getSquadByLeader(leader);
-    if (squad == null) throw exception("commands.squad.notLeader");
+    if (squad == null) throw exception("command.squad.notLeader");
     if (!squad.containsPlayer(uuid)) {
-      if (!squad.containsInvite(uuid)) throw exception("commands.squad.notInSquad");
+      if (!squad.containsInvite(uuid)) throw exception("command.squad.notInSquad.them");
       squad.expireInvite(uuid);
     }
 
@@ -136,7 +136,7 @@ public class SquadManager implements SquadIntegration, Listener {
 
   public void disband(MatchPlayer leader) {
     Squad squad = getSquadByLeader(leader);
-    if (squad == null) throw exception("commands.squad.notLeader");
+    if (squad == null) throw exception("command.squad.notLeader");
     squads.remove(squad);
     updateSquad(leader, squad);
   }

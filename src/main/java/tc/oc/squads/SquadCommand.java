@@ -1,6 +1,7 @@
 package tc.oc.squads;
 
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.translatable;
 import static net.kyori.adventure.text.event.ClickEvent.runCommand;
 import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static tc.oc.pgm.util.player.PlayerComponent.player;
@@ -55,7 +56,7 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD_CREATE)
   public void create(MatchPlayer sender) {
     manager.createSquad(sender);
-    sender.sendMessage(text("Created a new party"));
+    sender.sendMessage(translatable("command.squad.partyCreated"));
   }
 
   @CommandMethod("invite <player>")
@@ -64,22 +65,18 @@ public class SquadCommand {
   public void invite(MatchPlayer sender, @Argument("player") MatchPlayer invited) {
     manager.createInvite(invited, sender);
 
-    sender.sendMessage(text("Party invite sent"));
+    sender.sendMessage(translatable("command.squad.inviteSent"));
 
     String leaderName = Players.getVisibleName(invited.getBukkit(), sender.getBukkit());
 
     invited.sendMessage(
-        text()
-            .append(text("You were invited to ", NamedTextColor.YELLOW))
-            .append(sender.getName())
-            .append(text("'s party. ", NamedTextColor.YELLOW))
-            .append(
-                text("[ACCEPT]", NamedTextColor.GREEN, TextDecoration.BOLD)
-                    .clickEvent(ClickEvent.runCommand("/party accept " + leaderName)))
-            .append(text(" "))
-            .append(
-                text("[DENY]", NamedTextColor.RED, TextDecoration.BOLD)
-                    .clickEvent(ClickEvent.runCommand("/party deny " + leaderName))));
+        translatable(
+                "command.squad.wasInvited",
+                sender.getName(),
+                translatable("command.squad.accept", NamedTextColor.GREEN, TextDecoration.BOLD)
+                    .clickEvent(ClickEvent.runCommand("/party accept " + leaderName)),
+                translatable("command.squad.deny", NamedTextColor.RED, TextDecoration.BOLD))
+            .clickEvent(ClickEvent.runCommand("/party deny " + leaderName)));
   }
 
   @CommandMethod("accept <player>")
@@ -88,9 +85,8 @@ public class SquadCommand {
   public void accept(MatchPlayer sender, @Argument("player") MatchPlayer leader) {
     manager.acceptInvite(sender, leader);
 
-    leader.sendMessage(
-        text().append(sender.getName()).append(text(" has accepted your invitation")));
-    sender.sendMessage(text("Joined the party"));
+    leader.sendMessage(translatable("command.squad.inviteAccepted.leader", sender.getName()));
+    sender.sendMessage(translatable("command.squad.inviteAccepted.invited"));
   }
 
   @CommandMethod("deny <player>")
@@ -99,8 +95,8 @@ public class SquadCommand {
   public void deny(MatchPlayer sender, @Argument("player") MatchPlayer leader) {
     manager.expireInvite(sender, leader);
 
-    leader.sendMessage(text().append(sender.getName()).append(text(" has denied your invitation")));
-    sender.sendMessage(text("Invitation denied"));
+    leader.sendMessage(translatable("command.squad.inviteDenied.leader", sender.getName()));
+    sender.sendMessage(translatable("command.squad.inviteDenied.invited"));
   }
 
   @CommandMethod("leave")
@@ -108,7 +104,7 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD)
   public void leave(MatchPlayer sender) {
     manager.leaveSquad(sender);
-    sender.sendMessage(text("Left the party"));
+    sender.sendMessage(translatable("command.squad.partyLeft"));
   }
 
   @CommandMethod("list")
@@ -116,7 +112,7 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD)
   public void list(MatchPlayer sender, CommandSender cmdSend) {
     Squad squad = manager.getSquadByPlayer(sender);
-    if (squad == null) throw exception("commands.squad.notInSquad");
+    if (squad == null) throw exception("command.squad.notInSquad.you");
 
     boolean isLeader = Objects.equals(sender.getId(), squad.getLeader());
 
@@ -135,15 +131,18 @@ public class SquadCommand {
                 .append(text(". "))
                 .append(player(player, NameStyle.FANCY));
         if (squad.getLeader().equals(player)) {
-          builder.append(text(" (leader)"));
+          builder.append(text(" ").append(translatable("command.squad.list.leader")));
         } else {
           if (index >= squad.size()) {
-            builder.append(text(" (pending) ", NamedTextColor.GRAY, TextDecoration.ITALIC));
+            builder.append(text(" "));
+            builder.append(
+                translatable(
+                    "command.squad.list.pending", NamedTextColor.GRAY, TextDecoration.ITALIC));
           }
           if (isLeader) {
             builder.append(
                 text(" \u2715", NamedTextColor.DARK_RED)
-                    .hoverEvent(showText(text("Remove player from party")))
+                    .hoverEvent(showText(translatable("command.squad.removePlayer")))
                     .clickEvent(runCommand("/party kick " + player)));
           }
         }
@@ -158,13 +157,10 @@ public class SquadCommand {
   public void kick(MatchPlayer sender, @Argument("player") OfflinePlayer player) {
     MatchPlayer target = PGM.get().getMatchManager().getPlayer(player.getUniqueId());
     manager.kickPlayer(target, player.getUniqueId(), sender);
-    sender.sendMessage(text("Kicked player from your party"));
+    sender.sendMessage(translatable("command.squad.playerKicked"));
     if (target != null)
       target.sendMessage(
-          text()
-              .append(text("You were kicked from ", NamedTextColor.RED))
-              .append(sender.getName())
-              .append(text("'s party", NamedTextColor.RED)));
+          translatable("command.squad.wasKicked", NamedTextColor.RED, sender.getName()));
   }
 
   @CommandMethod("disband")
@@ -172,6 +168,6 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD)
   public void disband(MatchPlayer sender) {
     manager.disband(sender);
-    sender.sendMessage(text("Disbanded your party"));
+    sender.sendMessage(translatable("command.squad.partyDisbanded"));
   }
 }
