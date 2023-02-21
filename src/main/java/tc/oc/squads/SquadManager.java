@@ -1,8 +1,18 @@
 package tc.oc.squads;
 
+import static net.kyori.adventure.text.Component.text;
+import static tc.oc.pgm.util.player.PlayerComponent.player;
 import static tc.oc.pgm.util.text.TextException.exception;
+import static tc.oc.pgm.util.text.TextException.noPermission;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -22,11 +32,9 @@ import tc.oc.pgm.api.player.MatchPlayer;
 import tc.oc.pgm.join.JoinMatchModule;
 import tc.oc.pgm.join.JoinRequest;
 import tc.oc.pgm.join.JoinResult;
+import tc.oc.pgm.util.named.NameStyle;
 
 public class SquadManager implements SquadIntegration, Listener {
-
-  // TODO: HANDLE MAX AMOUNT OF PLAYERS
-  private static final int MAX_PARTY_SIZE = 3;
 
   private final List<Squad> squads = new ArrayList<>();
 
@@ -59,7 +67,10 @@ public class SquadManager implements SquadIntegration, Listener {
   }
 
   public Squad getOrCreateSquadByLeader(MatchPlayer leader) {
-    Squad squad = getSquadByLeader(leader);
+    Squad squad = getSquadByPlayer(leader);
+    if (squad != null && !leader.getId().equals(squad.getLeader()))
+      throw exception("squad.err.leaderOnly");
+
     return squad != null ? squad : createSquad(leader);
   }
 
@@ -100,7 +111,7 @@ public class SquadManager implements SquadIntegration, Listener {
 
   /** Squad command handlers * */
   public Squad createSquad(MatchPlayer leader) {
-    if (getSquadByPlayer(leader) != null) throw exception("command.squad.alreadyHasSquad");
+    if (getSquadByPlayer(leader) != null) throw exception("squad.err.alreadyCreated");
 
     Squad newSquad = new Squad(leader.getId());
     squads.add(newSquad);
@@ -111,9 +122,8 @@ public class SquadManager implements SquadIntegration, Listener {
 
   public void leaveSquad(MatchPlayer player) {
     Squad squad = getSquadByPlayer(player);
-    if (squad == null) throw exception("command.squad.notInSquad.you");
-    if (squad.getLeader().equals(player.getId()))
-      throw exception("command.squad.leaderCannotLeave");
+    if (squad == null) throw exception("squad.err.memberOnly");
+    if (squad.getLeader().equals(player.getId())) throw exception("squad.err.leaderCannotLeave");
     leaveSquad(player, player.getId(), squad);
   }
 
@@ -125,9 +135,10 @@ public class SquadManager implements SquadIntegration, Listener {
 
   public void kickPlayer(@Nullable MatchPlayer player, UUID uuid, MatchPlayer leader) {
     Squad squad = getSquadByLeader(leader);
-    if (squad == null) throw exception("command.squad.notLeader");
+    if (squad == null) throw exception("squad.err.leaderOnly");
     if (!squad.containsPlayer(uuid)) {
-      if (!squad.containsInvite(uuid)) throw exception("command.squad.notInSquad.them");
+      if (!squad.containsInvite(uuid))
+        throw exception("squad.err.notInYourParty", player(uuid, NameStyle.FANCY));
       squad.expireInvite(uuid);
     }
 
@@ -136,28 +147,34 @@ public class SquadManager implements SquadIntegration, Listener {
 
   public void disband(MatchPlayer leader) {
     Squad squad = getSquadByLeader(leader);
-    if (squad == null) throw exception("command.squad.notLeader");
+    if (squad == null) throw exception("squad.err.leaderOnly");
     squads.remove(squad);
     updateSquad(leader, squad);
   }
 
   /** Invite command handlers * */
   public void createInvite(MatchPlayer invited, MatchPlayer leader) {
-    if (getSquadByPlayer(invited) != null) throw exception("command.squad.alreadyInSquad");
-
     Squad squad = getOrCreateSquadByLeader(leader);
-    if (squad.totalSize() >= MAX_PARTY_SIZE) throw exception("command.squad.squadIsFull");
+
+    if (getSquadByPlayer(invited) != null)
+      throw exception("squad.err.alreadyInSquad", invited.getName(NameStyle.VERBOSE));
+
+    int maxSize = getMaxSquadSize(leader);
+    if (maxSize <= 0) throw noPermission();
+    if (squad.totalSize() >= maxSize)
+      throw exception("squad.err.full", text(squad.totalSize()), text(maxSize));
 
     UUID invitedUuid = invited.getId();
 
-    if (!squad.addInvite(invited.getId())) throw exception("command.squad.alreadyJoinedOrInvited");
+    if (!squad.addInvite(invited.getId()))
+      throw exception("squad.err.alreadyInvited", invited.getName(NameStyle.VERBOSE));
     executor.schedule(() -> squad.expireInvite(invitedUuid), 30, TimeUnit.SECONDS);
   }
 
   public void acceptInvite(MatchPlayer player, MatchPlayer leader) {
     Squad squad = getSquadByLeader(leader);
     if (squad == null || !squad.acceptInvite(player.getId()))
-      throw exception("command.squad.inviteNotFound");
+      throw exception("squad.err.noInvite", leader.getName(NameStyle.VERBOSE));
 
     updateSquad(player, squad);
     squads.forEach(s -> s.expireInvite(player.getId()));
@@ -166,7 +183,7 @@ public class SquadManager implements SquadIntegration, Listener {
   public void expireInvite(MatchPlayer player, MatchPlayer leader) {
     Squad squad = getSquadByLeader(leader);
     if (squad == null || !squad.expireInvite(player.getId()))
-      throw exception("command.squad.inviteNotFound");
+      throw exception("squad.err.noInvite", leader.getName(NameStyle.VERBOSE));
   }
 
   @EventHandler
@@ -205,5 +222,22 @@ public class SquadManager implements SquadIntegration, Listener {
               JoinResult result = jmm.queryJoin(leader, request);
               players.forEach(p -> jmm.join(p, request, result));
             });
+  }
+
+  private int getMaxSquadSize(MatchPlayer leader) {
+    Player player = leader.getBukkit();
+    // Any size is allowed
+    if (player.hasPermission(Permissions.SQUAD_CREATE + ".*")) return Integer.MAX_VALUE;
+
+    // You don't even have perms to create!
+    if (!player.hasPermission(Permissions.SQUAD_CREATE)) return -1;
+
+    // Search for highest available perm, up to 10
+    for (int i = 10; i > 0; i--) {
+      if (player.hasPermission(Permissions.SQUAD_CREATE + "." + i)) {
+        return i;
+      }
+    }
+    return -1;
   }
 }

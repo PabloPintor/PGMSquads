@@ -56,7 +56,7 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD_CREATE)
   public void create(MatchPlayer sender) {
     manager.createSquad(sender);
-    sender.sendMessage(translatable("command.squad.partyCreated"));
+    sender.sendMessage(translatable("squad.create.success", NamedTextColor.YELLOW));
   }
 
   @CommandMethod("invite <player>")
@@ -65,17 +65,17 @@ public class SquadCommand {
   public void invite(MatchPlayer sender, @Argument("player") MatchPlayer invited) {
     manager.createInvite(invited, sender);
 
-    sender.sendMessage(translatable("command.squad.inviteSent"));
+    sender.sendMessage(translatable("squad.invite.sent", invited.getName(NameStyle.VERBOSE)));
 
     String leaderName = Players.getVisibleName(invited.getBukkit(), sender.getBukkit());
 
     invited.sendMessage(
         translatable(
-                "command.squad.wasInvited",
-                sender.getName(),
-                translatable("command.squad.accept", NamedTextColor.GREEN, TextDecoration.BOLD)
+                "squad.invite.received",
+                sender.getName(NameStyle.VERBOSE),
+                translatable("squad.invite.accept", NamedTextColor.GREEN, TextDecoration.BOLD)
                     .clickEvent(ClickEvent.runCommand("/party accept " + leaderName)),
-                translatable("command.squad.deny", NamedTextColor.RED, TextDecoration.BOLD))
+                translatable("squad.invite.deny", NamedTextColor.RED, TextDecoration.BOLD))
             .clickEvent(ClickEvent.runCommand("/party deny " + leaderName)));
   }
 
@@ -85,8 +85,8 @@ public class SquadCommand {
   public void accept(MatchPlayer sender, @Argument("player") MatchPlayer leader) {
     manager.acceptInvite(sender, leader);
 
-    leader.sendMessage(translatable("command.squad.inviteAccepted.leader", sender.getName()));
-    sender.sendMessage(translatable("command.squad.inviteAccepted.invited"));
+    leader.sendMessage(translatable("squad.accept.leader", sender.getName(NameStyle.VERBOSE)));
+    sender.sendMessage(translatable("squad.accept.invited", leader.getName(NameStyle.VERBOSE)));
   }
 
   @CommandMethod("deny <player>")
@@ -95,8 +95,8 @@ public class SquadCommand {
   public void deny(MatchPlayer sender, @Argument("player") MatchPlayer leader) {
     manager.expireInvite(sender, leader);
 
-    leader.sendMessage(translatable("command.squad.inviteDenied.leader", sender.getName()));
-    sender.sendMessage(translatable("command.squad.inviteDenied.invited"));
+    leader.sendMessage(translatable("squad.deny.leader", sender.getName(NameStyle.VERBOSE)));
+    sender.sendMessage(translatable("squad.deny.invited", sender.getName(NameStyle.VERBOSE)));
   }
 
   @CommandMethod("leave")
@@ -104,7 +104,7 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD)
   public void leave(MatchPlayer sender) {
     manager.leaveSquad(sender);
-    sender.sendMessage(translatable("command.squad.partyLeft"));
+    sender.sendMessage(translatable("squad.leave.success", NamedTextColor.YELLOW));
   }
 
   @CommandMethod("list")
@@ -112,14 +112,14 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD)
   public void list(MatchPlayer sender, CommandSender cmdSend) {
     Squad squad = manager.getSquadByPlayer(sender);
-    if (squad == null) throw exception("command.squad.notInSquad.you");
+    if (squad == null) throw exception("squad.err.memberOnly");
 
     boolean isLeader = Objects.equals(sender.getId(), squad.getLeader());
 
     Component header =
         TextFormatter.horizontalLineHeading(
             cmdSend,
-            text().append(player(squad.getLeader(), NameStyle.VERBOSE)).append(text("'s Party")),
+            translatable("squad.list.header", player(squad.getLeader(), NameStyle.VERBOSE)),
             NamedTextColor.BLUE);
 
     new PrettyPaginatedComponentResults<UUID>(header, squad.totalSize()) {
@@ -129,21 +129,27 @@ public class SquadCommand {
             text()
                 .append(text(index + 1))
                 .append(text(". "))
-                .append(player(player, NameStyle.FANCY));
+                .append(player(player, NameStyle.VERBOSE));
         if (squad.getLeader().equals(player)) {
-          builder.append(text(" ").append(translatable("command.squad.list.leader")));
+          builder
+              .append(text(" "))
+              .append(
+                  translatable("squad.list.leader", NamedTextColor.GRAY, TextDecoration.ITALIC));
         } else {
           if (index >= squad.size()) {
-            builder.append(text(" "));
-            builder.append(
-                translatable(
-                    "command.squad.list.pending", NamedTextColor.GRAY, TextDecoration.ITALIC));
+            builder
+                .append(text(" "))
+                .append(
+                    translatable("squad.list.pending", NamedTextColor.GRAY, TextDecoration.ITALIC));
           }
           if (isLeader) {
-            builder.append(
-                text(" \u2715", NamedTextColor.DARK_RED)
-                    .hoverEvent(showText(translatable("command.squad.removePlayer")))
-                    .clickEvent(runCommand("/party kick " + player)));
+            builder
+                .append(text(" "))
+                .append(
+                    text("\u2715", NamedTextColor.DARK_RED)
+                        .hoverEvent(
+                            showText(translatable("squad.list.removeHover", NamedTextColor.RED)))
+                        .clickEvent(runCommand("/party kick " + player)));
           }
         }
         return builder.build();
@@ -157,10 +163,13 @@ public class SquadCommand {
   public void kick(MatchPlayer sender, @Argument("player") OfflinePlayer player) {
     MatchPlayer target = PGM.get().getMatchManager().getPlayer(player.getUniqueId());
     manager.kickPlayer(target, player.getUniqueId(), sender);
-    sender.sendMessage(translatable("command.squad.playerKicked"));
+    sender.sendMessage(
+        translatable(
+            "squad.kicked.leader",
+            NamedTextColor.YELLOW,
+            player(player.getUniqueId(), NameStyle.VERBOSE)));
     if (target != null)
-      target.sendMessage(
-          translatable("command.squad.wasKicked", NamedTextColor.RED, sender.getName()));
+      target.sendMessage(translatable("squad.kicked.player", NamedTextColor.RED, sender.getName()));
   }
 
   @CommandMethod("disband")
@@ -168,6 +177,6 @@ public class SquadCommand {
   @CommandPermission(Permissions.SQUAD)
   public void disband(MatchPlayer sender) {
     manager.disband(sender);
-    sender.sendMessage(translatable("command.squad.partyDisbanded"));
+    sender.sendMessage(translatable("squad.disband.success", NamedTextColor.YELLOW));
   }
 }
