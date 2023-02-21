@@ -17,7 +17,7 @@ import tc.oc.pgm.api.PGM;
 import tc.oc.pgm.api.event.NameDecorationChangeEvent;
 import tc.oc.pgm.api.integration.SquadIntegration;
 import tc.oc.pgm.api.match.Match;
-import tc.oc.pgm.api.match.event.MatchLoadEndEvent;
+import tc.oc.pgm.api.match.event.MatchAfterLoadEvent;
 import tc.oc.pgm.api.player.MatchPlayer;
 import tc.oc.pgm.join.JoinMatchModule;
 import tc.oc.pgm.join.JoinRequest;
@@ -183,7 +183,7 @@ public class SquadManager implements SquadIntegration, Listener {
   }
 
   @EventHandler
-  public void onPlayerJoinMatch(MatchLoadEndEvent event) {
+  public void onPlayerJoinMatch(MatchAfterLoadEvent event) {
     JoinMatchModule jmm = event.getMatch().needModule(JoinMatchModule.class);
     squads.stream()
         .sorted(Comparator.comparingInt(s -> -s.size()))
