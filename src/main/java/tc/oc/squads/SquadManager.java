@@ -8,6 +8,7 @@ import static tc.oc.pgm.util.text.TextException.noPermission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,8 @@ import tc.oc.pgm.api.player.MatchPlayer;
 import tc.oc.pgm.join.JoinMatchModule;
 import tc.oc.pgm.join.JoinRequest;
 import tc.oc.pgm.join.JoinResult;
+import tc.oc.pgm.teams.Team;
+import tc.oc.pgm.teams.TeamMatchModule;
 import tc.oc.pgm.util.named.NameStyle;
 
 public class SquadManager implements SquadIntegration, Listener {
@@ -214,13 +217,24 @@ public class SquadManager implements SquadIntegration, Listener {
               if (players.isEmpty()) return;
               MatchPlayer leader = event.getMatch().getPlayer(s.getLeader());
               if (leader == null) leader = players.get(0);
-              JoinRequest request =
-                  JoinRequest.group(
-                      null,
-                      players.size(),
-                      JoinRequest.playerFlags(leader, JoinRequest.Flag.SQUAD));
+
+              EnumSet<JoinRequest.Flag> flags =
+                  JoinRequest.playerFlags(leader, JoinRequest.Flag.SQUAD);
+
+              JoinRequest request = JoinRequest.group(null, players.size(), flags);
               JoinResult result = jmm.queryJoin(leader, request);
-              players.forEach(p -> jmm.join(p, request, result));
+
+              // If a team is picked, re-build the request to include it. This will prevent pgm from
+              // assuming it's able to re-balance the squad to a diff team.
+              final JoinRequest finalRequest;
+              if (result instanceof TeamMatchModule.TeamJoinResult) {
+                Team team = ((TeamMatchModule.TeamJoinResult) result).getTeam();
+                finalRequest = JoinRequest.group(team, players.size(), flags);
+              } else {
+                finalRequest = request;
+              }
+
+              players.forEach(p -> jmm.join(p, finalRequest, result));
             });
   }
 
