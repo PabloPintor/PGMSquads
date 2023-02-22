@@ -16,7 +16,6 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.command.CommandSender;
 import tc.oc.pgm.api.PGM;
 import tc.oc.pgm.api.player.MatchPlayer;
 import tc.oc.pgm.lib.cloud.commandframework.annotations.Argument;
@@ -39,9 +38,9 @@ public class SquadCommand {
 
   @CommandMethod("")
   @CommandDescription("List party members")
-  @CommandPermission(Permissions.SQUAD_CREATE)
-  public void listDefault(MatchPlayer sender, CommandSender cmdSend) {
-    list(sender, cmdSend);
+  @CommandPermission(Permissions.SQUAD)
+  public void listDefault(MatchPlayer sender) {
+    list(sender);
   }
 
   @CommandMethod("<player>")
@@ -119,7 +118,7 @@ public class SquadCommand {
   @CommandMethod("list")
   @CommandDescription("List party members")
   @CommandPermission(Permissions.SQUAD)
-  public void list(MatchPlayer sender, CommandSender cmdSend) {
+  public void list(MatchPlayer sender) {
     Squad squad = manager.getSquadByPlayer(sender);
     if (squad == null) throw exception("squad.err.memberOnly");
 
@@ -127,7 +126,7 @@ public class SquadCommand {
 
     Component header =
         TextFormatter.horizontalLineHeading(
-            cmdSend,
+            sender.getBukkit(),
             translatable("squad.list.header", player(squad.getLeader(), NameStyle.VERBOSE)),
             NamedTextColor.BLUE);
 
