@@ -65,13 +65,16 @@ public class SquadCommand {
   public void invite(MatchPlayer sender, @Argument("player") MatchPlayer invited) {
     manager.createInvite(invited, sender);
 
-    sender.sendMessage(translatable("squad.invite.sent", invited.getName(NameStyle.VERBOSE)));
+    sender.sendMessage(
+        translatable(
+            "squad.invite.sent", NamedTextColor.YELLOW, invited.getName(NameStyle.VERBOSE)));
 
     String leaderName = Players.getVisibleName(invited.getBukkit(), sender.getBukkit());
 
     invited.sendMessage(
         translatable(
                 "squad.invite.received",
+                NamedTextColor.YELLOW,
                 sender.getName(NameStyle.VERBOSE),
                 translatable("squad.invite.accept", NamedTextColor.GREEN, TextDecoration.BOLD)
                     .clickEvent(ClickEvent.runCommand("/party accept " + leaderName)),
@@ -85,8 +88,12 @@ public class SquadCommand {
   public void accept(MatchPlayer sender, @Argument("player") MatchPlayer leader) {
     manager.acceptInvite(sender, leader);
 
-    leader.sendMessage(translatable("squad.accept.leader", sender.getName(NameStyle.VERBOSE)));
-    sender.sendMessage(translatable("squad.accept.invited", leader.getName(NameStyle.VERBOSE)));
+    leader.sendMessage(
+        translatable(
+            "squad.accept.leader", NamedTextColor.GREEN, sender.getName(NameStyle.VERBOSE)));
+    sender.sendMessage(
+        translatable(
+            "squad.accept.invited", NamedTextColor.GREEN, leader.getName(NameStyle.VERBOSE)));
   }
 
   @CommandMethod("deny <player>")
@@ -95,8 +102,10 @@ public class SquadCommand {
   public void deny(MatchPlayer sender, @Argument("player") MatchPlayer leader) {
     manager.expireInvite(sender, leader);
 
-    leader.sendMessage(translatable("squad.deny.leader", sender.getName(NameStyle.VERBOSE)));
-    sender.sendMessage(translatable("squad.deny.invited", sender.getName(NameStyle.VERBOSE)));
+    leader.sendMessage(
+        translatable("squad.deny.leader", NamedTextColor.RED, sender.getName(NameStyle.VERBOSE)));
+    sender.sendMessage(
+        translatable("squad.deny.invited", NamedTextColor.RED, sender.getName(NameStyle.VERBOSE)));
   }
 
   @CommandMethod("leave")
