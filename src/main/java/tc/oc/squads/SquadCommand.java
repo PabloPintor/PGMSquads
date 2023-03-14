@@ -104,7 +104,7 @@ public class SquadCommand {
     leader.sendMessage(
         translatable("squad.deny.leader", NamedTextColor.RED, sender.getName(NameStyle.VERBOSE)));
     sender.sendMessage(
-        translatable("squad.deny.invited", NamedTextColor.RED, sender.getName(NameStyle.VERBOSE)));
+        translatable("squad.deny.invited", NamedTextColor.RED, leader.getName(NameStyle.VERBOSE)));
   }
 
   @CommandMethod("leave")
