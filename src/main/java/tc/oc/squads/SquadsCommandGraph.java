@@ -24,7 +24,7 @@ public class SquadsCommandGraph extends CommandGraph<PGMSquads> {
 
   @Override
   protected void setupInjectors() {
-    registerInjector(Audience.class, new AudienceProvider());
+    this.registerInjector(Audience.class, new AudienceProvider());
     this.registerInjector(MatchPlayer.class, new MatchPlayerProvider());
   }
 
